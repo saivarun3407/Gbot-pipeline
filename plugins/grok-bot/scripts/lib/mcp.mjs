@@ -140,9 +140,9 @@ export function handleMcp(message) {
       jsonrpc: "2.0",
       id: message.id,
       result: {
-        protocolVersion: "2024-11-05",
+        protocolVersion: message.params?.protocolVersion || "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "gbot-pipeline", version: "0.1.0" },
+        serverInfo: { name: "gbot-pipeline", version: "0.2.0" },
       },
     };
   }
@@ -176,36 +176,41 @@ export async function handleMcpAsync(message) {
 
 function writeMessage(obj) {
   if (!obj) return;
-  const json = JSON.stringify(obj);
-  const body = Buffer.from(json, "utf8");
-  process.stdout.write("Content-Length: " + body.length + "\r\n\r\n");
-  process.stdout.write(body);
+  process.stdout.write(JSON.stringify(obj) + "\n");
+}
+
+export function extractMcpFrames(text) {
+  const messages = [];
+  let rest = text;
+  while (rest.length) {
+    const headerMatch = rest.match(/^Content-Length:\s*(\d+)\r\n\r\n/i);
+    if (headerMatch) {
+      const len = Number(headerMatch[1]);
+      const start = headerMatch[0].length;
+      if (rest.length < start + len) break;
+      messages.push(rest.slice(start, start + len));
+      rest = rest.slice(start + len);
+      continue;
+    }
+    const nl = rest.indexOf("\n");
+    if (nl < 0) break;
+    const line = rest.slice(0, nl).replace(/\r$/, "").trim();
+    rest = rest.slice(nl + 1);
+    if (line) messages.push(line);
+  }
+  return { messages, rest };
 }
 
 export async function serveMcp() {
-  let buf = Buffer.alloc(0);
-  process.stdin.on("data", (chunk) => {
-    buf = Buffer.concat([buf, chunk]);
-    pump();
-  });
+  let buf = "";
   const queue = [];
   let pumping = false;
+  process.stdin.setEncoding("utf8");
 
   function pump() {
-    while (true) {
-      const headerEnd = buf.indexOf("\r\n\r\n");
-      if (headerEnd < 0) return;
-      const header = buf.subarray(0, headerEnd).toString("utf8");
-      const match = header.match(/Content-Length:\s*(\d+)/i);
-      if (!match) {
-        buf = buf.subarray(headerEnd + 4);
-        continue;
-      }
-      const len = Number(match[1]);
-      const start = headerEnd + 4;
-      if (buf.length < start + len) return;
-      const json = buf.subarray(start, start + len).toString("utf8");
-      buf = buf.subarray(start + len);
+    const extracted = extractMcpFrames(buf);
+    buf = extracted.rest;
+    for (const json of extracted.messages) {
       queue.push(json);
       if (!pumping) drain();
     }
@@ -226,4 +231,14 @@ export async function serveMcp() {
     }
     pumping = false;
   }
+
+  process.stdin.on("data", (chunk) => {
+    buf += chunk;
+    pump();
+  });
+  process.stdin.resume();
+  await new Promise((resolve) => {
+    process.stdin.on("end", resolve);
+    process.stdin.on("error", resolve);
+  });
 }
