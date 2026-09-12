@@ -1,0 +1,13 @@
+{
+  "name": "grok-bot",
+  "version": "0.1.0",
+  "description": "Call Grok Bot teammates from Grok Build with #Name. List, message, and create Bots on the Cursor account that owns them.",
+  "author": {
+    "name": "saivarun3407",
+    "url": "https://github.com/saivarun3407/Gbot-pipeline"
+  },
+  "homepage": "https://github.com/saivarun3407/Gbot-pipeline",
+  "repository": "https://github.com/saivarun3407/Gbot-pipeline",
+  "license": "MIT",
+  "keywords": ["grok-bot", "grok-build", "agents"]
+}

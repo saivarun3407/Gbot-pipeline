@@ -1,0 +1,27 @@
+{
+  "name": "gbot-pipeline",
+  "version": "0.1.0",
+  "description": "Call Grok Bots from Grok Build",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "gbot-pipeline": "./plugins/grok-bot/scripts/gbot-pipeline.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "doctor": "node plugins/grok-bot/scripts/gbot-pipeline.mjs doctor",
+    "list": "node plugins/grok-bot/scripts/gbot-pipeline.mjs list"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saivarun3407/Gbot-pipeline.git"
+  },
+  "files": [
+    "plugins/grok-bot",
+    "LICENSE",
+    "README.md"
+  ]
+}

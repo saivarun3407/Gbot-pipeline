@@ -1,0 +1,19 @@
+{
+  "name": "Gbot Pipeline",
+  "description": "Call Grok Bot teammates from Grok Build with #Name",
+  "owner": {
+    "name": "saivarun3407",
+    "url": "https://github.com/saivarun3407"
+  },
+  "plugins": [
+    {
+      "name": "grok-bot",
+      "description": "List, message, and create Grok Bots from Grok Build. Account-level Cursor token or local Grok Bot app session.",
+      "source": { "type": "local", "path": "./plugins/grok-bot" },
+      "version": "0.1.0",
+      "author": { "name": "saivarun3407" },
+      "homepage": "https://github.com/saivarun3407/Gbot-pipeline",
+      "keywords": ["grok-bot", "grok-build"]
+    }
+  ]
+}
