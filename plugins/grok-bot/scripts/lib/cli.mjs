@@ -11,8 +11,16 @@ import {
 import { parseCallArgs, parseHash } from "./hash.mjs";
 import { printJson, redact } from "./redact.mjs";
 import { appPresent, connectSession, desktopStatus } from "./session.mjs";
+import { syncSlashCommands } from "./slash-sync.mjs";
 import { chat } from "./stream.mjs";
 import { serveMcp } from "./mcp.mjs";
+import { bridgeDoctor, pullFromBot } from "./bridge.mjs";
+
+async function syncSlashFromSession(session) {
+  const bots = await listAgents(session);
+  const slash = await syncSlashCommands(bots);
+  return { bots, slash };
+}
 
 function takeFlag(args, name) {
   const i = args.indexOf(name);
@@ -46,12 +54,14 @@ export async function doctor({ hook = false } = {}) {
     const session = await connectSession();
     out.source = session.source;
     out.ok = true;
+    const synced = await syncSlashFromSession(session);
+    out.bots = synced.bots.length;
+    out.slashCommands = synced.slash.files.length;
     if (!hook) {
-      const bots = await listAgents(session);
-      out.bots = bots.length;
       out.health = await health(session);
       const access = await accessStatus(session);
       if (access) out.access = access;
+      out.bridge = bridgeDoctor();
     }
   } catch (err) {
     out.ok = false;
@@ -59,7 +69,9 @@ export async function doctor({ hook = false } = {}) {
   }
   if (hook) {
     const line = out.ok
-      ? "Grok Bot pipeline: ready (source=" + out.source + "). Type #BotName to message a teammate."
+      ? "Grok Bot pipeline: ready (source=" +
+        out.source +
+        "). Type /gbot to pick a teammate or /gbot-create. Reload plugins (r) or /new if rows are stale."
       : "Grok Bot pipeline: not ready. " + (out.error || "Sign in or set CURSOR_ACCESS_TOKEN.");
     process.stdout.write(line + "\n");
     return 0;
@@ -97,7 +109,7 @@ export async function main(argv) {
       case "list": {
         const full = takeBool(args, "--full");
         await withSession(async (session) => {
-          const bots = await listAgents(session);
+          const { bots } = await syncSlashFromSession(session);
           printJson(
             bots.map((b) => ({
               id: b.id,
@@ -110,6 +122,10 @@ export async function main(argv) {
             })),
           );
         });
+        return 0;
+      }
+      case "sync-slash": {
+        printJson(await withSession(async (session) => (await syncSlashFromSession(session)).slash));
         return 0;
       }
       case "create": {
@@ -127,7 +143,9 @@ export async function main(argv) {
               throw new GrokBotError("A Grok Bot named " + JSON.stringify(name) + " already exists. Pass --force.");
             }
           }
-          printJson(await createAgent(session, { name, title, description }));
+          const created = await createAgent(session, { name, title, description });
+          const slash = await syncSlashFromSession(session);
+          printJson({ created, slash: slash.slash });
         });
         return 0;
       }
@@ -190,6 +208,16 @@ export async function main(argv) {
         if (!stream) printJson(result);
         return result.stillRunning ? 2 : 0;
       }
+      case "pull": {
+        const name = takeFlag(args, "--name") || takeFlag(args, "--id") || args[0];
+        const path = takeFlag(args, "--path") || args[1];
+        const dest = takeFlag(args, "--dest") || args[2];
+        const timeout = Number(takeFlag(args, "--timeout") || 180);
+        const git = takeBool(args, "--git");
+        if (!name || !path || !dest) throw new GrokBotError("pull requires --name --path --dest");
+        printJson(await withSession((session) => pullFromBot(session, { name, path, dest, timeout, git })));
+        return 0;
+      }
       case "parse-hash": {
         printJson(parseHash(args.join(" ")));
         return 0;
@@ -207,11 +235,13 @@ function helpText() {
 
 Commands:
   doctor              Check credentials (app session or CURSOR_ACCESS_TOKEN)
-  list [--full]       List bots
+  list [--full]       List bots (also refreshes /gbot-* slash rows)
+  sync-slash          Write one /gbot-<slug> command per teammate into ~/.grok/commands
   create --name NAME [--title T] [--description D]
   send NAME PROMPT    Fire-and-forget
   chat NAME PROMPT    Send and wait (alias: call, #NAME PROMPT)
   transcript NAME [--limit N]
+  pull --name NAME --path /workspace/DIR --dest DIR [--timeout 180] [--git]
   mcp                 MCP stdio server
 
 Auth (first match):

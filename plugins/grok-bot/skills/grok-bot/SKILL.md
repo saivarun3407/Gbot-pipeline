@@ -1,14 +1,17 @@
 ---
 name: grok-bot
 description: >
-  Call Grok Bot teammates from Grok Build. Use when the user types #BotName,
-  runs /gbot, asks to list/create/message Grok Bots, or mentions Grok Bot
-  teammates. Do not do the Bot's work in this session — send it to the named Bot.
+  Call Grok Bot teammates from Grok Build. Use when the user types /gbot,
+  /gbot-create, /gbot-<slug>, #BotName, asks to list/create/message Grok Bots,
+  or mentions Grok Bot teammates. Do not do the Bot's work in this session —
+  send it to the named Bot.
 ---
 
 # Grok Bot from Grok Build
 
 Route work to Grok Bot teammates. This session is the dispatcher, not the worker.
+
+Grok's empty-prompt `#` is Remember mode. The teammate picker is the slash menu: type `/gbot` and pick `/gbot-<slug>` or `/gbot-create`. SessionStart writes those rows into `~/.grok/commands`. Reload plugins (`r`) or `/new` if the list is stale.
 
 ## When the user types `#Name rest`
 
@@ -34,6 +37,9 @@ node "${GROK_PLUGIN_ROOT}/scripts/gbot-pipeline.mjs" chat --name NAME --prompt "
 | Read recent messages | `grok_bot_transcript` |
 | Create a teammate | `grok_bot_create` — only if they asked |
 | Edit standing rules | `grok_bot_update` |
+| Pull Agent Computer files into a local folder | `grok_bot_pull` |
+
+When the user asks to pull/copy a codebase or folder off a Bot (or `#Name` + pull), call `grok_bot_pull` with `name`, Agent Computer `path` (e.g. `/workspace/flux-hydration`), and local `dest`. Do not ask the Bot in free prose to zip to Desktop.
 
 ## Create rules
 

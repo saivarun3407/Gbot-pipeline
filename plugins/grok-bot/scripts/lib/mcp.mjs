@@ -1,3 +1,4 @@
+import { pullFromBot } from "./bridge.mjs";
 import { createAgent, getTranscript, listAgents, sendPrompt, updateAgent } from "./gateway.mjs";
 import { parseHash } from "./hash.mjs";
 import { redact } from "./redact.mjs";
@@ -66,6 +67,22 @@ const TOOLS = [
     },
   },
   {
+    name: "grok_bot_pull",
+    description:
+      "Pull a directory off the named Bot's Agent Computer into a local folder via the computer-bridge inbox (local-exec copy, tunnel fallback).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        path: { type: "string", description: "Absolute path on the Agent Computer, no spaces" },
+        dest: { type: "string", description: "Local destination directory" },
+        timeout: { type: "number" },
+        git: { type: "boolean" },
+      },
+      required: ["name", "path", "dest"],
+    },
+  },
+  {
     name: "grok_bot_update",
     description: "Edit a Grok Bot name, title, or standing rules.",
     inputSchema: {
@@ -120,6 +137,16 @@ async function callTool(name, args = {}) {
     }
     case "grok_bot_transcript":
       return mcpResult(await getTranscript(session, args.name, args.limit || 20));
+    case "grok_bot_pull":
+      return mcpResult(
+        await pullFromBot(session, {
+          name: args.name,
+          path: args.path,
+          dest: args.dest,
+          timeout: args.timeout || 180,
+          git: args.git === true,
+        }),
+      );
     case "grok_bot_update":
       return mcpResult(
         await updateAgent(session, args.name, {

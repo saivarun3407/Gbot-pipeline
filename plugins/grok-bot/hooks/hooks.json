@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "node \"${GROK_PLUGIN_ROOT}/scripts/gbot-pipeline.mjs\" doctor --hook",
-            "timeout": 25
+            "timeout": 30
           }
         ]
       }

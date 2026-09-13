@@ -1,7 +1,7 @@
 {
   "name": "grok-bot",
-  "version": "0.1.0",
-  "description": "Call Grok Bot teammates from Grok Build with #Name. List, message, and create Bots on the Cursor account that owns them.",
+  "version": "0.2.0",
+  "description": "Call Grok Bot teammates from Grok Build. Type /gbot for a teammate dropup, or #Name once you know the name.",
   "author": {
     "name": "saivarun3407",
     "url": "https://github.com/saivarun3407/Gbot-pipeline"

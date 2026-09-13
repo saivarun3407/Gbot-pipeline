@@ -1,14 +1,16 @@
 ---
 name: gbot
-description: List, message, or create Grok Bot teammates from Grok Build
-argument-hint: list|status|send <name> <prompt>|chat <name> <prompt>|create <name>| #<name> <prompt>
+description: Pick a Grok Bot teammate from the slash menu
+argument-hint: list|status|create <name>|chat <name> <prompt>
 ---
 
 User arguments: $ARGUMENTS
 
 This command talks to Grok Bot teammates via the grok-bot plugin MCP tools. Do not do the Bot's work in this session.
 
-If `$ARGUMENTS` is empty, call `grok_bot_list`.
+The slash menu is the picker. Typing `/gbot` lists `/gbot`, `/gbot-create`, and one `/gbot-<slug>` row per teammate (after SessionStart sync). Grok's empty-prompt `#` is Remember mode, not this picker.
+
+If `$ARGUMENTS` is empty, call `grok_bot_list` and tell the user to pick `/gbot-<slug>` or `/gbot-create`.
 
 If `$ARGUMENTS` starts with `#`, call `grok_bot_chat` with `hash` set to the full argument string.
 
