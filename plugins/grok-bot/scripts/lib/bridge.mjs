@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createHash } from "node:crypto";
-import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -99,6 +99,19 @@ async function downloadTo(url, dest) {
   await pipeline(res.body, createWriteStream(dest));
 }
 
+export function inboxReady(tgz, sidecarPath) {
+  if (!existsSync(tgz) || !existsSync(sidecarPath)) return false;
+  let side;
+  try {
+    side = JSON.parse(readFileSync(sidecarPath, "utf8"));
+  } catch {
+    return false;
+  }
+  const want = Number(side.bytes);
+  if (want > 0 && statSync(tgz).size < want) return false;
+  return true;
+}
+
 export function verifySidecar(tgz, sidecarPath, job, nonce) {
   const side = JSON.parse(readFileSync(sidecarPath, "utf8"));
   if (side.job !== job) throw new GrokBotError("sidecar job mismatch", "INBOX");
@@ -115,10 +128,6 @@ export async function waitForBridge({ session, botId, job, nonce, inbox, timeout
   const deadline = Date.now() + timeout * 1000;
   let lastLine = null;
   while (Date.now() < deadline) {
-    if (existsSync(tgz) && existsSync(jsonPath)) {
-      const v = verifySidecar(tgz, jsonPath, job, nonce);
-      return { transport: "inbox", tgz, ...v };
-    }
     const tail = await getTranscript(session, botId, 80);
     for (const entry of tail.entries) {
       const parsed = parseBridgeLine(entry.text || "");
@@ -135,10 +144,29 @@ export async function waitForBridge({ session, botId, job, nonce, inbox, timeout
       }
       return { transport: "tunnel", tgz, sidecar: lastLine, sha256: sha256File(tgz) };
     }
+    if (inboxReady(tgz, jsonPath)) {
+      const v = verifySidecar(tgz, jsonPath, job, nonce);
+      return { transport: "inbox", tgz, ...v };
+    }
     await sleep(Math.max(0.4, poll) * 1000);
   }
+  let trunc = "";
+  if (existsSync(tgz) && existsSync(jsonPath)) {
+    try {
+      const side = JSON.parse(readFileSync(jsonPath, "utf8"));
+      const got = statSync(tgz).size;
+      if (side.bytes && got < Number(side.bytes)) {
+        trunc = " inbox truncated " + got + "/" + side.bytes + " bytes";
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   throw new GrokBotError(
-    "pull timed out waiting for inbox " + tgz + (lastLine ? " last=" + JSON.stringify(lastLine) : ""),
+    "pull timed out waiting for inbox " +
+      tgz +
+      trunc +
+      (lastLine ? " last=" + JSON.stringify(lastLine) : ""),
     "TIMEOUT",
   );
 }

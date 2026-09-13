@@ -10,6 +10,7 @@ import { dirname } from "node:path";
 import {
   buildPullPrompt,
   extractTar,
+  inboxReady,
   parseBridgeLine,
   sha256File,
   verifySidecar,
@@ -56,6 +57,17 @@ test("agent-bridge pack copies inbox and extract skips node_modules", () => {
   extractTar(tgz, dest);
   assert.equal(readFileSync(join(dest, "hello.txt"), "utf8"), "hi\n");
   assert.throws(() => readFileSync(join(dest, "node_modules", "skip.js")));
+});
+
+test("inboxReady false while copy truncated", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gbot-trunc-"));
+  const tgz = join(dir, "a.tgz");
+  const json = join(dir, "a.json");
+  writeFileSync(tgz, "short");
+  writeFileSync(json, JSON.stringify({ job: "a", nonce: "n", bytes: 99999, sha256: "x" }));
+  assert.equal(inboxReady(tgz, json), false);
+  writeFileSync(json, JSON.stringify({ job: "a", nonce: "n", bytes: 5, sha256: "x" }));
+  assert.equal(inboxReady(tgz, json), true);
 });
 
 test("verifySidecar rejects wrong hash", () => {

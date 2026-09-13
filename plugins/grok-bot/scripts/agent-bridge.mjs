@@ -2,7 +2,16 @@
 // Runs on the Agent Computer (Linux). Node stdlib only.
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { createReadStream, copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  createReadStream,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -131,12 +140,14 @@ async function pack() {
   const copied = tryCopyInbox(tgz, sidecarPath, inboxDest, job);
   let transport = copied ? "inbox" : "inbox";
   let url = "";
-  if (!copied && wantTunnel) {
+  const autoTunnel = wantTunnel || bytes > 512 * 1024;
+  if (autoTunnel) {
     try {
       const tun = await serveTarball(tgz, nonce);
       transport = "tunnel";
       url = tun.url;
-      process.stdout.write(
+      writeSync(
+        1,
         formatBridgeLine({ job, nonce, transport, path: abs, sha, url, file: job + ".tgz", sha256: hash, bytes }) + "\n",
       );
       await new Promise(() => {});
@@ -145,7 +156,8 @@ async function pack() {
       process.stderr.write(String(err.message || err) + "\n");
     }
   }
-  process.stdout.write(
+  writeSync(
+    1,
     formatBridgeLine({
       job,
       nonce,
